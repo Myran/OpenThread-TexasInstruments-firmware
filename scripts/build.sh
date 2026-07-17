@@ -15,14 +15,25 @@ git clean -dxf && \
     git submodule foreach 'git clean -dxf' && \
     git submodule foreach --recursive 'git restore .'
 
+# --- local patches: applied AFTER clean/restore so they are not wiped ---
+echo "Applying local patches from ../patches/"
+for p in ../patches/*.patch; do
+    [ -e "$p" ] || continue
+    echo "  applying $(basename "$p")"
+    git apply "$p"
+done
+# -----------------------------------------------------------------------
+
 items=(
-    # target      name     CC1352P_2_OTHER   
-    "LP_CC2652RB,CC2652RB,false"
+    # target,name,CC1352P_2_OTHER
+    # Only the SONOFF ZBDongle-P (CC2652P launchpad) is built by default, to keep CI fast.
+    # To build every upstream variant, add these lines back:
+    #   "LP_CC2652RB,CC2652RB,false"
+    #   "CC1352P_2_LAUNCHXL,CC1352P2_CC2652P_other,true"
+    #   "LP_CC1352P7_4,CC1352P7,false"
+    #   "CC26X2R1_LAUNCHXL,CC2652R,false"
+    #   "LP_CC2652R7,CC2652R7,false"
     "CC1352P_2_LAUNCHXL,CC1352P2_CC2652P_launchpad,false"
-    "CC1352P_2_LAUNCHXL,CC1352P2_CC2652P_other,true"
-    "LP_CC1352P7_4,CC1352P7,false"
-    "CC26X2R1_LAUNCHXL,CC2652R,false"
-    "LP_CC2652R7,CC2652R7,false"
 )
 
 for target in "${items[@]}"; do

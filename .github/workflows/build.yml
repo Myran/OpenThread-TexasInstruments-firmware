@@ -1,0 +1,38 @@
+name: Build OT-RCP firmware
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Firmware version string (e.g. 2026.1.1)"
+        required: false
+        default: "2026.1.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    # Match the environment the project documents (docker run ubuntu:24.04).
+    container:
+      image: ubuntu:24.04
+    steps:
+      - name: Install checkout prerequisites
+        run: apt-get update && apt-get install -y git ca-certificates
+
+      - name: Checkout (recursive submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Bootstrap toolchain (TI compiler + SDK)
+        run: bash scripts/bootstrap.sh
+
+      - name: Build firmware
+        run: bash scripts/build.sh "${{ github.event.inputs.version || '2026.1.1' }}"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: ot-rcp-firmware
+          path: dist/*.zip
+          if-no-files-found: error
