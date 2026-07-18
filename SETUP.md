@@ -37,23 +37,28 @@ leave that machine.
 
 ```bash
 # Prereqs (Homebrew):
-brew install just colima docker        # docker here is the CLI client only
+brew install just colima docker                    # docker here is the CLI client only
+brew install qemu lima-additional-guestagents      # Apple Silicon only — see note below
 # + a Chromium browser (Chrome/Arc) for flashing — Safari has no WebSerial
 
 git clone --recurse-submodules https://github.com/<you>/OpenThread-TexasInstruments-firmware
 cd OpenThread-TexasInstruments-firmware
 
-# Start Colima as an x86_64 VM — the TI compiler is a linux-x64 binary:
-colima start --arch x86_64 --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60   # Apple Silicon
-# colima start --cpu 4 --memory 8 --disk 60                                          # Intel Mac (already x86_64)
+# Start Colima as a real x86_64 VM — the TI toolchain is linux-x64 only:
+colima start --arch x86_64 --cpu 4 --memory 6 --disk 60   # Apple Silicon (QEMU) AND Intel
 
 just build          # -> dist/CC1352P2_CC2652P_launchpad_ot_rcp_2026_1_1.zip  (.hex inside)
 ```
 
-> **Apple Silicon note:** `scripts/bootstrap.sh` downloads an x86_64 TI compiler
-> (`ti_cgt_armllvm_..._linux-x64_installer.bin`) that will not run on an arm64
-> Colima VM. Starting Colima with `--arch x86_64 --vm-type vz --vz-rosetta`
-> (Rosetta-accelerated) makes the existing recipe work unmodified.
+> **Apple Silicon note:** the build needs a genuine **x86_64** environment.
+> `scripts/bootstrap.sh` installs an x86_64 TI compiler, and the SDK's
+> `arm-none-eabi-gcc 9-2020-q2` (x86_64) **segfaults under Rosetta** — so
+> `--vm-type vz --vz-rosetta` does *not* work. Use full x86_64 emulation:
+> `brew install qemu lima-additional-guestagents`, then
+> `colima start --arch x86_64`. It's slower (QEMU emulates every instruction —
+> the SDK compile takes a while) but reliable. On Intel Macs the same
+> `colima start --arch x86_64` is already native. Budget ~10 GB free disk for
+> the VM image + build artifacts.
 
 Without the `justfile`, the raw equivalent is:
 ```bash
