@@ -24,27 +24,55 @@ fixes as easy as dropping another `.patch` file into `patches/`.
    paths shown above. `scripts/build.sh` replaces the existing one.
 3. Commit and push.
 
-## Build it (pick one)
+## Build it
 
-**CI (recommended):** After pushing, open the **Actions** tab → the "Build
-OT-RCP firmware" run → download the `ot-rcp-firmware` artifact. Inside is
-`CC1352P2_CC2652P_launchpad_ot_rcp_2026_1_1.zip` → unzip for the `.hex`.
+Two ways — pick one. The `justfile` recipes (`just build`, `just flash`, …) wrap
+every step below; run a bare `just` to list them.
 
-**Locally (needs Docker, pulls several GB):**
+### Locally with Colima (manual control, no CI)
+
+Best when you build and flash on the same machine the dongle lives on (e.g. the
+Home Assistant server) — the stick never moves, and the `.hex` never has to
+leave that machine.
+
 ```bash
+# Prereqs (Homebrew):
+brew install just colima docker        # docker here is the CLI client only
+# + a Chromium browser (Chrome/Arc) for flashing — Safari has no WebSerial
+
 git clone --recurse-submodules https://github.com/<you>/OpenThread-TexasInstruments-firmware
 cd OpenThread-TexasInstruments-firmware
-docker run -it --rm -v "$(pwd)":/data -w /data ubuntu:24.04 bash
-bash scripts/bootstrap.sh
-bash scripts/build.sh 2026.1.1
-# firmware ends up in ./dist
+
+# Start Colima as an x86_64 VM — the TI compiler is a linux-x64 binary:
+colima start --arch x86_64 --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60   # Apple Silicon
+# colima start --cpu 4 --memory 8 --disk 60                                          # Intel Mac (already x86_64)
+
+just build          # -> dist/CC1352P2_CC2652P_launchpad_ot_rcp_2026_1_1.zip  (.hex inside)
 ```
+
+> **Apple Silicon note:** `scripts/bootstrap.sh` downloads an x86_64 TI compiler
+> (`ti_cgt_armllvm_..._linux-x64_installer.bin`) that will not run on an arm64
+> Colima VM. Starting Colima with `--arch x86_64 --vm-type vz --vz-rosetta`
+> (Rosetta-accelerated) makes the existing recipe work unmodified.
+
+Without the `justfile`, the raw equivalent is:
+```bash
+docker run --rm -v "$(pwd)":/data -w /data ubuntu:24.04 \
+  bash -c "bash scripts/bootstrap.sh && bash scripts/build.sh 2026.1.1"
+```
+
+### CI (GitHub Actions)
+
+After pushing, open the **Actions** tab → the "Build OT-RCP firmware" run →
+download the `ot-rcp-firmware` artifact. Inside is
+`CC1352P2_CC2652P_launchpad_ot_rcp_2026_1_1.zip` → unzip for the `.hex`.
 
 ## Flash + use
 
 1. Flash the `.hex` to the Dongle-P with the SMLIGHT web flasher
-   (https://smlight.tech/flasher/) — works for any adapter — or per the
-   Zigbee2MQTT flashing docs.
+   (https://smlight.tech/flasher/) — `just flash` opens it — in a Chromium
+   browser (Chrome/Arc; Safari has no WebSerial). Pick the CP210x serial port,
+   then flash. Works for any adapter, or follow the Zigbee2MQTT flashing docs.
 2. In Home Assistant, install the **OpenThread Border Router** add-on, select
    the dongle, set baudrate **460800**, and start it.
 
