@@ -74,12 +74,31 @@ download the `ot-rcp-firmware` artifact. Inside is
 
 ## Flash + use
 
-1. Flash the `.hex` to the Dongle-P with the SMLIGHT web flasher
-   (https://smlight.tech/flasher/) — `just flash` opens it — in a Chromium
-   browser (Chrome/Arc; Safari has no WebSerial). Pick the CP210x serial port,
-   then flash. Works for any adapter, or follow the Zigbee2MQTT flashing docs.
-2. In Home Assistant, install the **OpenThread Border Router** add-on, select
-   the dongle, set baudrate **460800**, and start it.
+Run the flashing recipes on the machine the dongle is plugged into (needs
+`python3`; `just bsl-setup` installs `cc2538-bsl` into `.tools/` on first use).
+
+```bash
+just dongle-probe     # non-destructive: confirm bootloader entry + comms first
+just dongle-backup    # read current firmware to backups/ (insurance)
+just flash-thread     # backup -> erase -> write -> verify the built .hex
+# revert anytime:  just flash-zigbee   (flashes stock Z-Stack coordinator)
+# GUI alternative: just flash-web      (SMLIGHT web flasher, Chromium only)
+```
+
+The recipes use the Sonoff auto-BSL trigger (`--bootloader-sonoff-usb`) — no
+BOOT button needed — and never disable the bootloader backdoor, so the dongle
+can always be re-flashed. Override the port with
+`just port=/dev/cu.usbserial-XXXX flash-thread` if auto-detect picks the wrong one.
+
+Then in Home Assistant install the **OpenThread Border Router** add-on and set:
+
+- **device**: the dongle's `/dev/serial/by-id/…` path
+- **baudrate**: `460800`
+- **flow_control**: **`false`** — with `true` the add-on can't talk to the RCP
+  (`universal_silabs_flasher.spinel` fails to send). Then start the add-on.
+
+On a VM, pass the dongle through to the guest first (e.g. UTM USB passthrough),
+and set the add-on to start on boot (+ watchdog) for resilience.
 
 ## Remember (unchanged by this firmware)
 

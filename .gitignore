@@ -1,1 +1,5 @@
 dist/
+
+# Dongle-flashing tooling + firmware backups (created by the flash-* recipes)
+.tools/
+backups/
